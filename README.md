@@ -1,6 +1,6 @@
-变量
+## 变量
 
-# serv00ADMIN_PASSWORD   # 面板密码
+serv00ADMIN_PASSWORD   # 面板密码
 
 HOSTNAME_X   # 主机名1，如: s1.serv00.com
 USERNAME_X    # 用户名1

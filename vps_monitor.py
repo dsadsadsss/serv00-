@@ -186,4 +186,261 @@ def check_all_vps():
     table += "| Index   | Hostname              | Script Name      | Status   | Last Check              | Username | User     | Command  | PID      |\n"
     table += "+---------+-----------------------+------------------+----------+-------------------------+----------+----------+----------+----------+\n"
     
-    for key, status in vps_status.i
+    for key, status in vps_status.items():
+        index, hostname, script_name = key.split(':')
+        table += "| {:<7} | {:<21} | {:<16} | {:<8} | {:<23} | {:<8} | {:<8} | {:<8} | {:<8} |\n".format(
+            status['index'], hostname[:21], script_name[:16], status['status'][:8],
+            status['last_check'], status['username'][:8],
+            status.get('user', 'N/A')[:8], status.get('command', 'N/A')[:8], status.get('pid', 'N/A')[:8]
+        )
+        table += "+---------+-----------------------+------------------+----------+-------------------------+----------+----------+----------+----------+\n"
+    
+    logger.info("\n" + table)
+
+# 登录功能
+def login_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not session.get('logged_in'):
+            return redirect('/login')
+        return f(*args, **kwargs)
+    return decorated_function
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        password = request.form.get('password', '')
+        if password == ADMIN_PASSWORD:
+            session['logged_in'] = True
+            return redirect('/')
+        else:
+            return render_template_string('''
+                <!DOCTYPE html>
+                <html lang="zh-CN">
+                <head>
+                    <meta charset="UTF-8">
+                    <title>登录</title>
+                    <style>
+                        body {
+                            display: flex;
+                            justify-content: center;
+                            align-items: center;
+                            height: 100vh;
+                            margin: 0;
+                            background-color: #f2f2f2;
+                        }
+                        .login-container {
+                            text-align: center;
+                            background-color: #ffffff;
+                            padding: 30px;
+                            border-radius: 8px;
+                            box-shadow: 0px 0px 10px 0px #aaaaaa;
+                        }
+                        p.error {
+                            color: red;
+                        }
+                    </style>
+                </head>
+                <body>
+                    <div class="login-container">
+                        <h2>密码错误</h2>
+                        <a href="/login">返回</a>
+                    </div>
+                </body>
+                </html>
+            ''')
+    return render_template_string('''
+        <!DOCTYPE html>
+        <html lang="zh-CN">
+        <head>
+            <meta charset="UTF-8">
+            <title>登录</title>
+            <style>
+                body {
+                    display: flex;
+                    justify-content: center;
+                    align-items: center;
+                    height: 100vh;
+                    margin: 0;
+                    background-color: #f2f2f2;
+                }
+                .login-container {
+                    text-align: center;
+                    background-color: #ffffff;
+                    padding: 30px;
+                    border-radius: 8px;
+                    box-shadow: 0px 0px 10px 0px #aaaaaa;
+                }
+                input[type=password], input[type=submit] {
+                    padding: 10px;
+                    margin: 10px;
+                    font-size: 16px;
+                    width: 100%;
+                }
+                input[type=submit] {
+                    width: 50%;
+                }
+            </style>
+        </head>
+        <body>
+            <div class="login-container">
+                <h2>请输入密码</h2>
+                <form method="post">
+                    <p><input type="password" name="password" placeholder="密码"></p>
+                    <p><input type="submit" value="登录"></p>
+                </form>
+            </div>
+        </body>
+        </html>
+    ''')
+
+@app.route('/')
+@login_required
+def index():
+    html = '''
+    <!DOCTYPE html>
+    <html lang="zh-CN">
+    <head>
+        <meta charset="UTF-8">
+        <title>Serv00 状态概览</title>
+        <style>
+            body {
+                font-family: Arial, sans-serif;
+            }
+            .container {
+                width: 90%;
+                margin: 0 auto;
+            }
+            h1 {
+                text-align: center;
+            }
+            #executeButton {
+                display: block;
+                margin: 20px auto;
+                padding: 10px 20px;
+                font-size: 16px;
+            }
+            #result {
+                text-align: center;
+                color: green;
+                font-weight: bold;
+            }
+            table {
+                width: 100%;
+                border-collapse: collapse;
+                margin-top: 20px;
+            }
+            table, th, td {
+                border: 1px solid #dddddd;
+            }
+            th, td {
+                padding: 8px;
+                text-align: center;
+            }
+            th {
+                background-color: #f2f2f2;
+            }
+            tr:nth-child(even){
+                background-color: #f9f9f9;
+            }
+        </style>
+    </head>
+    <body>
+    <div class="container">
+        <h1>Serv00 状态概览</h1>
+        <button id="executeButton" onclick="executeTasks()">立即执行所有任务</button>
+        <p id="result"></p>
+        <table>
+            <tr>
+                <th>Index</th>
+                <th>Hostname</th>
+                <th>Script Name</th>
+                <th>Status</th>
+                <th>Last Check</th>
+                <th>Username</th>
+                <th>User</th>
+                <th>Command</th>
+                <th>PID</th>
+            </tr>
+            {% for key, data in vps_status.items() %}
+            <tr>
+                <td>{{ data.index }}</td>
+                <td><a href="/status/{{ key }}">{{ key.split(':')[1] }}</a></td>
+                <td>{{ data.script_name }}</td>
+                <td>{{ data.status }}</td>
+                <td>{{ data.last_check }}</td>
+                <td>{{ data.username }}</td>
+                <td>{{ data.user }}</td>
+                <td>{{ data.command }}</td>
+                <td>{{ data.pid }}</td>
+            </tr>
+            {% endfor %}
+        </table>
+    </div>
+    <script>
+    function executeTasks() {
+        fetch('/execute', {
+            method: 'POST',
+            credentials: 'include'
+        })
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById('result').innerText = data.status;
+            setTimeout(function(){ location.reload(); }, 5000); // 5秒后刷新页面
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            document.getElementById('result').innerText = '执行任务时出错。';
+        });
+    }
+    </script>
+    </body>
+    </html>
+    '''
+    return render_template_string(html, vps_status=vps_status)
+
+@app.route('/execute', methods=['POST'])
+@login_required
+def execute_tasks():
+    # 异步执行任务，避免阻塞请求
+    Thread(target=check_all_vps).start()
+    return jsonify({"status": "所有任务正在执行，页面将在5秒后刷新。"})
+
+@app.route('/status/<path:key>')
+@login_required
+def vps_status_detail(key):
+    return jsonify(vps_status[key]) if key in vps_status else (jsonify({"error": "VPS or script not found"}), 404)
+
+@app.route('/health')
+def health_check():
+    return jsonify({"status": "healthy", "uptime": time.time() - start_time}), 200
+
+def run_flask():
+    app.run(host='0.0.0.0', port=7860)
+
+def main():
+    global start_time
+    start_time = time.time()
+    
+    logger.info("===== VPS monitoring script is starting =====")
+    
+    Thread(target=run_flask).start()
+    logger.info("Flask server started in background")
+
+    check_all_vps()
+    schedule.every(4).hours.do(check_all_vps)
+    logger.info("Scheduled VPS check every 4 hours")
+    
+    logger.info("===== VPS monitoring script is running =====")
+    
+    heartbeat_count = 0
+    while True:
+        schedule.run_pending()
+        time.sleep(60)
+        heartbeat_count += 1
+        if heartbeat_count % 60 == 0:
+            uptime_hours = heartbeat_count // 60
+            logger.info(f"Heartbeat: Script is still running. Uptime: {uptime_hours} hours")
+
+if __name__ == "__main__":
+    main()

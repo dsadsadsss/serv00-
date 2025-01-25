@@ -5,7 +5,7 @@
 
 # 变量
 
-serv00ADMIN_PASSWORD   # 面板密码
+ADMIN_PASSWORD   # 面板密码
 
 HOSTNAME_X   # 主机名1，如: s1.serv00.com
 USERNAME_X    # 用户名1
@@ -21,4 +21,4 @@ HOSTNAME_Y    # 主机名2
 USERNAME_Y     #  用户名2
 PASSWORD_Y      # 密码2
 SCRIPT_PATHS_Y_1    #  保活需要执行的脚本1
-PORTS_Y_1     # 保活所用的端口号1i
+PORTS_Y_1     # 保活所用的端口号1

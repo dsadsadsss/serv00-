@@ -26,5 +26,4 @@ PORTS_Y_1     # 保活所用的端口号1
 
 X和Y配套一个账号
 
-如图:
-
+原帖地址https://linux.do/t/topic/325816
